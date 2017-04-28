@@ -2,7 +2,9 @@ import random
 import time
 
 import numpy as np
-
+from math import log
+from scipy.stats import multivariate_normal
+from numpy.linalg import norm
 
 def k_means(data, k, eps=1e-4, mu=None):
     """ Run the k-means algorithm
@@ -69,9 +71,6 @@ def k_means(data, k, eps=1e-4, mu=None):
         prev_mu = mu
         
     return (mu, assignments)
-
-
-
 
 
 class MixtureModel(object):
@@ -165,10 +164,72 @@ class GMM(MixtureModel):
         self.params['mu'] = np.random.randn(k, d)
 
     def e_step(self, data):
-        raise NotImplementedError()
+        """ Performs the E-step of the EM algorithm
+        data - an NxD pandas DataFrame
+
+        returns a tuple containing
+            (float) the expected log-likelihood
+            (NxK ndarray) the posterior probability of the latent variables
+        """
+        print(" \n *** E STEP *** ")
+        if type(data) != type(np.array(0)): # if data is not a numpy array
+            print("[INFO] Converting pandas DataFrame to numpy array.")
+            data = np.array(data) # convert it to one
+
+        n, d = data.shape
+        k = self.k
+        posteriorArray = np.zeros((n, k)) # stores all p(j | i)
+
+        # set up all the gaussians
+        gaussians = []
+        for j in range(k):
+            norm_j = multivariate_normal(mean=self.params['mu'][j], cov=self.params['sigsq'][j])
+            gaussians.append(norm_j)
+
+        # for each point, compute the posterior
+        posteriorSums = np.zeros(n)
+        for i in range(n):
+            for j in range(k):
+                posterior = self.params['pi'][j] * gaussians[j].pdf(data[i]) # compute numerator of posterior
+                posteriorArray[i][j] = posterior
+                posteriorSums[i] += posterior
+
+        # compute log likelihoods before normalizing
+        logLikelihood = np.sum(np.log(np.sum(posteriorArray, 1)))
+
+        # divide every element in posteriorArray by the corresponding sum in posteriorSums
+        for i in range(n):
+            posteriorArray[i] /= posteriorSums[i]
+
+        return (logLikelihood, posteriorArray)
+
 
     def m_step(self, data, pz_x):
-        raise NotImplementedError()
+        """ Performs the M-step of the EM algorithm
+        data - an NxD pandas DataFrame
+        p_z - an NxK numpy ndarray containing posterior probabilities
+
+        returns a dictionary containing the new parameter values
+        """
+        print(" \n *** M STEP *** ")
+        n, d = data.shape
+        k = self.k
+
+        # store the expected number of points that each gaussian should claim
+        expNumPointsEachGaussian = sum(pz_x, 0) # sum down column
+        new_pi = expNumPointsEachGaussian / n
+
+        new_mu = np.zeros((k,d))
+        for j in range(k):
+            for i in range(n):
+                new_mu[j] = (pz_x[i][j] * data[i]) / expNumPointsEachGaussian[j]
+
+        new_sigsq = np.zeros(k)
+        for j in range(k):
+            sig_sum = 0
+            for i in range(n):
+                sig_sum += (pz_x[i][j] * norm((data[i]-new_mu[j]), ord=2))
+            new_sigsq[j] = sig_sum / (2.0 * expNumPointsEachGaussian[j])
 
         return {
             'pi': new_pi,
