@@ -171,7 +171,6 @@ class GMM(MixtureModel):
             (float) the expected log-likelihood
             (NxK ndarray) the posterior probability of the latent variables
         """
-        print(" \n *** E STEP *** ")
         if type(data) != type(np.array(0)): # if data is not a numpy array
             print("[INFO] Converting pandas DataFrame to numpy array.")
             data = np.array(data) # convert it to one
@@ -211,7 +210,6 @@ class GMM(MixtureModel):
 
         returns a dictionary containing the new parameter values
         """
-        print(" \n *** M STEP *** ")
         n, d = data.shape
         k = self.k
 
@@ -221,14 +219,16 @@ class GMM(MixtureModel):
 
         new_mu = np.zeros((k,d))
         for j in range(k):
+            mu_sum = 0
             for i in range(n):
-                new_mu[j] = (pz_x[i][j] * data[i]) / expNumPointsEachGaussian[j]
+                mu_sum += pz_x[i][j] * data[i]
+            new_mu[j] = mu_sum / expNumPointsEachGaussian[j]
 
         new_sigsq = np.zeros(k)
         for j in range(k):
             sig_sum = 0
             for i in range(n):
-                sig_sum += (pz_x[i][j] * norm((data[i]-new_mu[j]), ord=2))
+                sig_sum += (pz_x[i][j] * norm((data[i]-new_mu[j]), ord=2)**2)
             new_sigsq[j] = sig_sum / (2.0 * expNumPointsEachGaussian[j])
 
         return {
