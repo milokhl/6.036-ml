@@ -252,13 +252,6 @@ class CMM(MixtureModel):
         self.params['alpha'] = [np.random.dirichlet([1]*d, size=k) for d in ds] # ds = [4,2,3] in test example
 
     def e_step(self, data):
-        """ Performs the E-step of the EM algorithm
-        data - an NxD pandas DataFrame
-
-        returns a tuple containing
-            (float) the expected log-likelihood
-            (NxK ndarray) the posterior probability of the latent variables
-        """
         # get useful dimensions
         n, D = data.shape # num example, num features
         ds = np.shape(self.params['alpha'][0])[1] # does return an int
@@ -268,18 +261,15 @@ class CMM(MixtureModel):
         posteriorArray = np.zeros((n, k))
         for i in range(n):
             x_i = np.array(data.iloc[i]) # get x_i for convenience
-
             numSum = 0 # stores sum of numerator
-            for j in range(k): # for each cluster
 
-                # dth alpha matrix, jth cluster
+            for j in range(k): # for each cluster
                 num = self.params['pi'][j]
                 for d in range(D):
                     if isnan(x_i[d]):
                         num *= 1
                     else:
                         num *= self.params['alpha'][d][j][int(x_i[d])]
-
                 numSum += num
                 posteriorArray[i][j] = num
 
@@ -290,10 +280,8 @@ class CMM(MixtureModel):
         ll = 0
         for i in range(n):
             x_i = np.array(data.iloc[i]) # get x_i for convenience
-
             for j in range(k): # for each cluster
                 ll += posteriorArray[i][j] * log(self.params['pi'][j])
-
                 for d in range(D): # for each feature
                     if isnan(x_i[d]):
                         ll += 0 # because [[x_d^i is missing]]
@@ -309,6 +297,33 @@ class CMM(MixtureModel):
 
         returns a dictionary containing the new parameter values
         """
+        # get useful dimensions
+        n, D = data.shape # num example, num features
+        ds = np.shape(self.params['alpha'][0])[1] # does return an int
+        k = self.k
+        new_pi = np.array(k)
+        new_alpha = self.params['alpha']
+
+        # calculate each n_j
+        expNumPointsEachCluster = np.sum(p_z, 0) # sum down columns
+
+        # compute new pi by normalizing
+        new_pi = np.divide(expNumPointsEachCluster, n)
+
+        # compute new alpha
+        for d in range(D):
+            n_d = self.params['alpha'][d].shape[1] # determine number of possible values this d could take on
+            for j in range(k): # for each cluster
+                for cat in range(n_d):
+                    hasValCtr = 0
+                    alphaSum = 0
+                    for i in range(n):
+                        if isnan(data.iloc[i, d]):
+                            pass
+                        else:
+                            alphaSum += p_z[i][j] * (int(data.iloc[i, d]) == cat)
+                            hasValCtr += p_z[i][j]
+                    new_alpha[d][j][cat] = float(alphaSum) / hasValCtr
 
         return {
             'pi': new_pi,
