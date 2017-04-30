@@ -296,7 +296,7 @@ class CMM(MixtureModel):
 
                 for d in range(D): # for each feature
                     if isnan(x_i[d]):
-                        ll += 1
+                        ll += 0 # because [[x_d^i is missing]]
                     else:
                         ll += posteriorArray[i][j] * log(self.params['alpha'][d][j][int(x_i[d])])
 
