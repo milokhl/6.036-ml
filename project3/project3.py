@@ -256,6 +256,33 @@ class CMM(MixtureModel):
 
     def e_step(self, data):
         print(" *** E STEP *** ")
+        n, D = data.shape # num example, num features
+        ds = np.shape(self.params['alpha'][0])[1] # does return an int
+        k = self.k
+
+        posteriorArray = np.zeros((n, k))
+        unfilled = True
+        for d in range(D):
+            x_d = data.iloc[:,d]
+            dummy = pd.get_dummies(x_d)
+            res1 = np.dot(dummy, self.params['alpha'][d].T)
+            res1[res1 == 0] = 1 # replace all zeros with ones (to handle NaN values)
+            if unfilled:
+                posteriorArray = res1
+                unfilled = False
+            else:
+                posteriorArray = np.multiply(posteriorArray, res1)
+
+        for i in range(n):
+            posteriorArray[i] = np.multiply(posteriorArray[i], self.params['pi']) # multiply by correspond pi
+            posteriorArray[i] /= np.sum(posteriorArray[i]) # normalize
+
+        ll = 0
+        return (ll, posteriorArray)
+
+
+    def e_step2(self, data):
+        print(" *** E STEP *** ")
         # get useful dimensions
         n, D = data.shape # num example, num features
         ds = np.shape(self.params['alpha'][0])[1] # does return an int
@@ -340,7 +367,7 @@ class CMM(MixtureModel):
             'pi': new_pi,
             'alpha': new_alpha,
             }
-            
+
     @property
     def bic(self):
         raise NotImplementedError()
