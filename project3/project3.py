@@ -251,7 +251,7 @@ class CMM(MixtureModel):
         # each alpha is a (k x d) numpy ndarray
         # each cluster k has a length n_d array of probabilities that sum to one
         self.params['alpha'] = [np.random.dirichlet([1]*d, size=k) for d in ds] # ds = [4,2,3] in test example
-        
+
     def e_step(self, data):
         print(" *** E STEP *** ")
         n, D = data.shape # num example, num features
@@ -272,7 +272,7 @@ class CMM(MixtureModel):
                 posteriorArray = np.multiply(posteriorArray, res1)
 
         for i in range(n):
-            posteriorArray[i] = np.multiply(posteriorArray[i], self.params['pi']) # multiply by correspond pi
+            posteriorArray[i] = np.multiply(posteriorArray[i], self.params['pi']) # multiply by corresponding pi
             posteriorArray[i] /= np.sum(posteriorArray[i]) # normalize
 
         ll = np.sum(np.dot(posteriorArray, np.log(self.params['pi']))) # add the first part of the ll formula
@@ -286,12 +286,6 @@ class CMM(MixtureModel):
         return (ll, posteriorArray)
 
     def m_step(self, data, p_z):
-        """ Performs the M-step of the EM algorithm
-        data - an NxD pandas DataFrame
-        p_z - an NxK numpy ndarray containing posterior probabilities
-
-        returns a dictionary containing the new parameter values
-        """
         print(" *** M STEP *** ")
         # get useful dimensions
         n, D = data.shape # num example, num features
@@ -301,14 +295,11 @@ class CMM(MixtureModel):
         new_alpha = self.params['alpha']
 
         # calculate each n_j
-        t0 = time.time()
         expNumPointsEachCluster = np.sum(p_z, 0) # sum down columns
 
         # compute new pi by normalizing
         new_pi = np.divide(expNumPointsEachCluster, n)
 
-        t1 = time.time()
-        print(t1-t0, "secs")
         for d in range(D): # for each item in alpha
             x_d = data.iloc[:,d]
             dummy = pd.get_dummies(x_d)
@@ -316,8 +307,6 @@ class CMM(MixtureModel):
             for j in range(k):
                 new_alpha[d][j] /= np.sum(new_alpha[d][j])
 
-        t2 = time.time()
-        print(t2-t1, "secs")
         return {
             'pi': new_pi,
             'alpha': new_alpha,
