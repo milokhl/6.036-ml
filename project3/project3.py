@@ -248,12 +248,10 @@ class CMM(MixtureModel):
     def __init__(self, k, ds):
         """d is a list containing the number of categories for each feature"""
         super(CMM, self).__init__(k)
-
         # each alpha is a (k x d) numpy ndarray
         # each cluster k has a length n_d array of probabilities that sum to one
         self.params['alpha'] = [np.random.dirichlet([1]*d, size=k) for d in ds] # ds = [4,2,3] in test example
-        print("ds:", ds)
-
+        
     def e_step(self, data):
         print(" *** E STEP *** ")
         n, D = data.shape # num example, num features
@@ -286,55 +284,6 @@ class CMM(MixtureModel):
             ll += np.sum(np.multiply(np.log(res2), posteriorArray)) # ptwise multiply and sum
 
         return (ll, posteriorArray)
-
-    # def e_step2(self, data):
-    #     print(" *** E STEP *** ")
-    #     # get useful dimensions
-    #     n, D = data.shape # num example, num features
-    #     ds = np.shape(self.params['alpha'][0])[1] # does return an int
-    #     k = self.k
-
-    #     # calculate the posteriors for each x_i
-    #     t0 = time.time()
-    #     posteriorArray = np.zeros((n, k))
-    #     for i in range(n):
-    #         x_i = np.array(data.iloc[i]) # get x_i for convenience
-    #         numSum = 0 # stores sum of numerator
-
-    #         for j in range(k): # for each cluster
-    #             num = self.params['pi'][j]
-    #             for d in range(D):
-    #                 if isnan(x_i[d]):
-    #                     num *= 1
-    #                 else:
-    #                     print
-    #                     num *= self.params['alpha'][d][j][int(x_i[d])]
-    #             numSum += num
-    #             posteriorArray[i][j] = num
-
-    #         # normalize to get the actual posteriors
-    #         posteriorArray[i] /= numSum
-
-    #     t1 = time.time()
-    #     print(t1-t0, "secs")
-        
-    #     # compute log-likelihood
-    #     ll = 0
-    #     for i in range(n):
-    #         x_i = np.array(data.iloc[i]) # get x_i for convenience
-    #         for j in range(k): # for each cluster
-    #             ll += posteriorArray[i][j] * log(self.params['pi'][j])
-    #             for d in range(D): # for each feature
-    #                 if isnan(x_i[d]) or self.params['alpha'][d][j][int(x_i[d])] == 0:
-    #                     ll += 0 # because [[x_d^i is missing]]
-    #                 else:
-    #                     ll += posteriorArray[i][j] * log(self.params['alpha'][d][j][int(x_i[d])])
-    #                     #print("Something wrong with:", self.params['alpha'][d][j][int(x_i[d])])
-
-    #     t2 = time.time()
-    #     print(t2-t1, "secs")
-
-    #     return (ll, posteriorArray)
 
     def m_step(self, data, p_z):
         """ Performs the M-step of the EM algorithm
