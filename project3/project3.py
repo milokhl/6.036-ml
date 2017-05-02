@@ -340,53 +340,7 @@ class CMM(MixtureModel):
             'pi': new_pi,
             'alpha': new_alpha,
             }
-
-    # def m_step2(self, data, p_z):
-    #     """ Performs the M-step of the EM algorithm
-    #     data - an NxD pandas DataFrame
-    #     p_z - an NxK numpy ndarray containing posterior probabilities
-
-    #     returns a dictionary containing the new parameter values
-    #     """
-    #     print(" *** M STEP *** ")
-    #     # get useful dimensions
-    #     n, D = data.shape # num example, num features
-    #     ds = np.shape(self.params['alpha'][0])[1] # does return an int
-    #     k = self.k
-    #     new_pi = np.array(k)
-    #     new_alpha = self.params['alpha']
-
-    #     # calculate each n_j
-    #     t0 = time.time()
-    #     expNumPointsEachCluster = np.sum(p_z, 0) # sum down columns
-
-    #     # compute new pi by normalizing
-    #     new_pi = np.divide(expNumPointsEachCluster, n)
-
-    #     t1 = time.time()
-    #     print(t1-t0, "secs")
-
-    #     # compute new alpha
-    #     for d in range(D):
-    #         n_d = self.params['alpha'][d].shape[1] # determine number of possible values this d could take on
-    #         for j in range(k): # for each cluster
-    #             for cat in range(n_d):
-    #                 hasValCtr = 0
-    #                 alphaSum = 0
-    #                 for i in range(n):
-    #                     if not isnan(data.iloc[i, d]):
-    #                         alphaSum += p_z[i][j] * (int(data.iloc[i, d]) == cat)
-    #                         hasValCtr += p_z[i][j]
-    #                 new_alpha[d][j][cat] = float(alphaSum) / hasValCtr
-
-    #     t2 = time.time()
-    #     print(t2-t1, "secs")
-
-    #     return {
-    #         'pi': new_pi,
-    #         'alpha': new_alpha,
-    #     }
-
+            
     @property
     def bic(self):
         raise NotImplementedError()
