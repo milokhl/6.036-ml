@@ -5,6 +5,7 @@ import numpy as np
 from math import log, isnan
 from scipy.stats import multivariate_normal
 from numpy.linalg import norm
+import pandas as pd
 
 def k_means(data, k, eps=1e-4, mu=None):
     """ Run the k-means algorithm
@@ -137,6 +138,7 @@ class MixtureModel(object):
             if i > max_iters:
                 return False
             ll, p_z = self.e_step(data)
+            print("LL Score:", ll)
             new_params = self.m_step(data, p_z)
             self.params.update(new_params)
             if verbose:
@@ -250,14 +252,17 @@ class CMM(MixtureModel):
         # each alpha is a (k x d) numpy ndarray
         # each cluster k has a length n_d array of probabilities that sum to one
         self.params['alpha'] = [np.random.dirichlet([1]*d, size=k) for d in ds] # ds = [4,2,3] in test example
+        print("ds:", ds)
 
     def e_step(self, data):
+        print(" *** E STEP *** ")
         # get useful dimensions
         n, D = data.shape # num example, num features
         ds = np.shape(self.params['alpha'][0])[1] # does return an int
         k = self.k
 
         # calculate the posteriors for each x_i
+        t0 = time.time()
         posteriorArray = np.zeros((n, k))
         for i in range(n):
             x_i = np.array(data.iloc[i]) # get x_i for convenience
@@ -269,12 +274,16 @@ class CMM(MixtureModel):
                     if isnan(x_i[d]):
                         num *= 1
                     else:
+                        print
                         num *= self.params['alpha'][d][j][int(x_i[d])]
                 numSum += num
                 posteriorArray[i][j] = num
 
             # normalize to get the actual posteriors
             posteriorArray[i] /= numSum
+
+        t1 = time.time()
+        print(t1-t0, "secs")
         
         # compute log-likelihood
         ll = 0
@@ -283,10 +292,14 @@ class CMM(MixtureModel):
             for j in range(k): # for each cluster
                 ll += posteriorArray[i][j] * log(self.params['pi'][j])
                 for d in range(D): # for each feature
-                    if isnan(x_i[d]):
+                    if isnan(x_i[d]) or self.params['alpha'][d][j][int(x_i[d])] == 0:
                         ll += 0 # because [[x_d^i is missing]]
                     else:
                         ll += posteriorArray[i][j] * log(self.params['alpha'][d][j][int(x_i[d])])
+                        #print("Something wrong with:", self.params['alpha'][d][j][int(x_i[d])])
+
+        t2 = time.time()
+        print(t2-t1, "secs")
 
         return (ll, posteriorArray)
 
@@ -297,6 +310,7 @@ class CMM(MixtureModel):
 
         returns a dictionary containing the new parameter values
         """
+        print(" *** M STEP *** ")
         # get useful dimensions
         n, D = data.shape # num example, num features
         ds = np.shape(self.params['alpha'][0])[1] # does return an int
@@ -305,30 +319,73 @@ class CMM(MixtureModel):
         new_alpha = self.params['alpha']
 
         # calculate each n_j
+        t0 = time.time()
         expNumPointsEachCluster = np.sum(p_z, 0) # sum down columns
 
         # compute new pi by normalizing
         new_pi = np.divide(expNumPointsEachCluster, n)
 
-        # compute new alpha
-        for d in range(D):
-            n_d = self.params['alpha'][d].shape[1] # determine number of possible values this d could take on
-            for j in range(k): # for each cluster
-                for cat in range(n_d):
-                    hasValCtr = 0
-                    alphaSum = 0
-                    for i in range(n):
-                        if isnan(data.iloc[i, d]):
-                            pass
-                        else:
-                            alphaSum += p_z[i][j] * (int(data.iloc[i, d]) == cat)
-                            hasValCtr += p_z[i][j]
-                    new_alpha[d][j][cat] = float(alphaSum) / hasValCtr
+        t1 = time.time()
+        print(t1-t0, "secs")
+        for d in range(D): # for each item in alpha
+            x_d = data.iloc[:,d]
+            dummy = pd.get_dummies(x_d)
+            new_alpha[d] = np.dot(p_z.T, dummy)
+            for j in range(k):
+                new_alpha[d][j] /= np.sum(new_alpha[d][j])
 
+        t2 = time.time()
+        print(t2-t1, "secs")
         return {
             'pi': new_pi,
             'alpha': new_alpha,
-        }
+            }
+
+    # def m_step2(self, data, p_z):
+    #     """ Performs the M-step of the EM algorithm
+    #     data - an NxD pandas DataFrame
+    #     p_z - an NxK numpy ndarray containing posterior probabilities
+
+    #     returns a dictionary containing the new parameter values
+    #     """
+    #     print(" *** M STEP *** ")
+    #     # get useful dimensions
+    #     n, D = data.shape # num example, num features
+    #     ds = np.shape(self.params['alpha'][0])[1] # does return an int
+    #     k = self.k
+    #     new_pi = np.array(k)
+    #     new_alpha = self.params['alpha']
+
+    #     # calculate each n_j
+    #     t0 = time.time()
+    #     expNumPointsEachCluster = np.sum(p_z, 0) # sum down columns
+
+    #     # compute new pi by normalizing
+    #     new_pi = np.divide(expNumPointsEachCluster, n)
+
+    #     t1 = time.time()
+    #     print(t1-t0, "secs")
+
+    #     # compute new alpha
+    #     for d in range(D):
+    #         n_d = self.params['alpha'][d].shape[1] # determine number of possible values this d could take on
+    #         for j in range(k): # for each cluster
+    #             for cat in range(n_d):
+    #                 hasValCtr = 0
+    #                 alphaSum = 0
+    #                 for i in range(n):
+    #                     if not isnan(data.iloc[i, d]):
+    #                         alphaSum += p_z[i][j] * (int(data.iloc[i, d]) == cat)
+    #                         hasValCtr += p_z[i][j]
+    #                 new_alpha[d][j][cat] = float(alphaSum) / hasValCtr
+
+    #     t2 = time.time()
+    #     print(t2-t1, "secs")
+
+    #     return {
+    #         'pi': new_pi,
+    #         'alpha': new_alpha,
+    #     }
 
     @property
     def bic(self):
