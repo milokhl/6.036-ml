@@ -277,58 +277,64 @@ class CMM(MixtureModel):
             posteriorArray[i] = np.multiply(posteriorArray[i], self.params['pi']) # multiply by correspond pi
             posteriorArray[i] /= np.sum(posteriorArray[i]) # normalize
 
-        ll = 0
+        ll = np.sum(np.dot(posteriorArray, np.log(self.params['pi']))) # add the first part of the ll formula
+        for d in range(D):
+            x_d = data.iloc[:,d]
+            dummy = pd.get_dummies(x_d)
+            res2 = np.dot(dummy, self.params['alpha'][d].T)
+            res2[res2 == 0] = 1 # replace all zeroes with ones (to handle NaN values)
+            ll += np.sum(np.multiply(np.log(res2), posteriorArray)) # ptwise multiply and sum
+
         return (ll, posteriorArray)
 
+    # def e_step2(self, data):
+    #     print(" *** E STEP *** ")
+    #     # get useful dimensions
+    #     n, D = data.shape # num example, num features
+    #     ds = np.shape(self.params['alpha'][0])[1] # does return an int
+    #     k = self.k
 
-    def e_step2(self, data):
-        print(" *** E STEP *** ")
-        # get useful dimensions
-        n, D = data.shape # num example, num features
-        ds = np.shape(self.params['alpha'][0])[1] # does return an int
-        k = self.k
+    #     # calculate the posteriors for each x_i
+    #     t0 = time.time()
+    #     posteriorArray = np.zeros((n, k))
+    #     for i in range(n):
+    #         x_i = np.array(data.iloc[i]) # get x_i for convenience
+    #         numSum = 0 # stores sum of numerator
 
-        # calculate the posteriors for each x_i
-        t0 = time.time()
-        posteriorArray = np.zeros((n, k))
-        for i in range(n):
-            x_i = np.array(data.iloc[i]) # get x_i for convenience
-            numSum = 0 # stores sum of numerator
+    #         for j in range(k): # for each cluster
+    #             num = self.params['pi'][j]
+    #             for d in range(D):
+    #                 if isnan(x_i[d]):
+    #                     num *= 1
+    #                 else:
+    #                     print
+    #                     num *= self.params['alpha'][d][j][int(x_i[d])]
+    #             numSum += num
+    #             posteriorArray[i][j] = num
 
-            for j in range(k): # for each cluster
-                num = self.params['pi'][j]
-                for d in range(D):
-                    if isnan(x_i[d]):
-                        num *= 1
-                    else:
-                        print
-                        num *= self.params['alpha'][d][j][int(x_i[d])]
-                numSum += num
-                posteriorArray[i][j] = num
+    #         # normalize to get the actual posteriors
+    #         posteriorArray[i] /= numSum
 
-            # normalize to get the actual posteriors
-            posteriorArray[i] /= numSum
-
-        t1 = time.time()
-        print(t1-t0, "secs")
+    #     t1 = time.time()
+    #     print(t1-t0, "secs")
         
-        # compute log-likelihood
-        ll = 0
-        for i in range(n):
-            x_i = np.array(data.iloc[i]) # get x_i for convenience
-            for j in range(k): # for each cluster
-                ll += posteriorArray[i][j] * log(self.params['pi'][j])
-                for d in range(D): # for each feature
-                    if isnan(x_i[d]) or self.params['alpha'][d][j][int(x_i[d])] == 0:
-                        ll += 0 # because [[x_d^i is missing]]
-                    else:
-                        ll += posteriorArray[i][j] * log(self.params['alpha'][d][j][int(x_i[d])])
-                        #print("Something wrong with:", self.params['alpha'][d][j][int(x_i[d])])
+    #     # compute log-likelihood
+    #     ll = 0
+    #     for i in range(n):
+    #         x_i = np.array(data.iloc[i]) # get x_i for convenience
+    #         for j in range(k): # for each cluster
+    #             ll += posteriorArray[i][j] * log(self.params['pi'][j])
+    #             for d in range(D): # for each feature
+    #                 if isnan(x_i[d]) or self.params['alpha'][d][j][int(x_i[d])] == 0:
+    #                     ll += 0 # because [[x_d^i is missing]]
+    #                 else:
+    #                     ll += posteriorArray[i][j] * log(self.params['alpha'][d][j][int(x_i[d])])
+    #                     #print("Something wrong with:", self.params['alpha'][d][j][int(x_i[d])])
 
-        t2 = time.time()
-        print(t2-t1, "secs")
+    #     t2 = time.time()
+    #     print(t2-t1, "secs")
 
-        return (ll, posteriorArray)
+    #     return (ll, posteriorArray)
 
     def m_step(self, data, p_z):
         """ Performs the M-step of the EM algorithm
