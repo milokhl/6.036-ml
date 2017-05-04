@@ -314,4 +314,16 @@ class CMM(MixtureModel):
 
     @property
     def bic(self):
-        raise NotImplementedError()
+        """
+        BIC(D, theta) = ll(D;theta) - 0.5 * dim(theta) * log(n)
+
+        Parameters to include in BIC:
+        -size of alpha
+        -size of pi
+        """
+        num_params = self.params['alpha'].shape[0] * self.params['alpha'].shape[1] * len(self.params['alpha']) * self.k
+        return self.max_ll - 0.5 * log(self.n_train) * num_params
+
+
+
+
