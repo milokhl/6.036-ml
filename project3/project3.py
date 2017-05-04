@@ -157,6 +157,8 @@ class MixtureModel(object):
         print('max ll = %.5f  (%.2f min, %d iters)' %
               (ll, (time.time() - start_t) / 60, i))
 
+        #print('bic: %f' % self.bic)
+
         return True
 
 
@@ -312,17 +314,33 @@ class CMM(MixtureModel):
             'alpha': new_alpha,
             }
 
+    def getBIC(self):
+        D = len(self.params['alpha'])
+        num_params = 0
+        num_params += (self.k - 1) # pi params
+
+        # alpha params
+        for d in range(D):
+            num_params += self.params['alpha'][d].shape[0] * (self.params['alpha'][d].shape[1]-1)
+
+        bic = self.max_ll - 0.5 * log(self.n_train) * num_params
+        return bic
+
     @property
     def bic(self):
         """
         BIC(D, theta) = ll(D;theta) - 0.5 * dim(theta) * log(n)
-
-        Parameters to include in BIC:
-        -size of alpha
-        -size of pi
         """
-        num_params = self.params['alpha'].shape[0] * self.params['alpha'].shape[1] * len(self.params['alpha']) * self.k
-        return self.max_ll - 0.5 * log(self.n_train) * num_params
+        D = len(self.params['alpha'])
+        num_params = 0
+        num_params += (self.k - 1) # pi params
+
+        # alpha params
+        for d in range(D):
+            num_params += self.params['alpha'][d].shape[0] * (self.params['alpha'][d].shape[1]-1)
+
+        bic = self.max_ll - 0.5 * log(self.n_train) * num_params
+        return bic
 
 
 
